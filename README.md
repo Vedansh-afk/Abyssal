@@ -1,1 +1,1572 @@
-# Abyssal
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ABYSSAL — Deep Sea Exploration</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #050d14;
+    --deep: #061623;
+    --abyss: #010810;
+    --glow: #00d4ff;
+    --amber: #f0a500;
+    --fog: #8ab4c9;
+    --surface: #0e2233;
+    --text: #c8dde9;
+    --white: #eef6fb;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--abyss);
+    color: var(--text);
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* Custom cursor */
+  .cursor {
+    position: fixed;
+    width: 12px; height: 12px;
+    background: var(--glow);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: transform 0.1s, opacity 0.2s;
+    mix-blend-mode: screen;
+  }
+  .cursor-ring {
+    position: fixed;
+    width: 36px; height: 36px;
+    border: 1px solid rgba(0,212,255,0.5);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    transform: translate(-50%, -50%);
+    transition: transform 0.18s ease, width 0.2s, height 0.2s;
+  }
+  body:hover .cursor { opacity: 1; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--abyss); }
+  ::-webkit-scrollbar-thumb { background: var(--glow); border-radius: 2px; }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 3rem;
+    background: linear-gradient(to bottom, rgba(1,8,16,0.95), transparent);
+    transition: background 0.4s;
+  }
+  nav.scrolled { background: rgba(1,8,16,0.97); }
+  .nav-logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.1rem;
+    color: var(--white);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+  .nav-logo span { color: var(--glow); }
+  .nav-links { display: flex; gap: 2.5rem; list-style: none; }
+  .nav-links a {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--fog);
+    text-decoration: none;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    transition: color 0.3s;
+    position: relative;
+  }
+  .nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: -4px; left: 0; right: 0;
+    height: 1px;
+    background: var(--glow);
+    transform: scaleX(0);
+    transition: transform 0.3s;
+  }
+  .nav-links a:hover { color: var(--white); }
+  .nav-links a:hover::after { transform: scaleX(1); }
+  .nav-cta {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--glow);
+    border: 1px solid var(--glow);
+    padding: 0.6rem 1.4rem;
+    text-decoration: none;
+    transition: background 0.3s, color 0.3s;
+  }
+  .nav-cta:hover { background: var(--glow); color: var(--abyss); }
+
+  /* HERO */
+  #hero {
+    position: relative;
+    height: 100vh;
+    min-height: 700px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .hero-video-wrap {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+  .hero-video-wrap video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    opacity: 0.35;
+    filter: hue-rotate(180deg) saturate(0.6);
+  }
+  .hero-video-wrap::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse at 50% 0%, rgba(0,50,80,0.6) 0%, transparent 60%),
+      linear-gradient(to bottom, transparent 40%, var(--abyss) 100%);
+  }
+
+  /* Animated particles */
+  .particles {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    animation: drift linear infinite;
+    opacity: 0;
+  }
+  @keyframes drift {
+    0%   { transform: translateY(100vh) translateX(0); opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 0.8; }
+    100% { transform: translateY(-10vh) translateX(var(--drift)); opacity: 0; }
+  }
+
+  /* Sonar rings */
+  .sonar {
+    position: absolute;
+    bottom: 15%;
+    right: 12%;
+    width: 200px; height: 200px;
+    z-index: 1;
+  }
+  .sonar-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(0,212,255,0.4);
+    animation: sonarPulse 3s ease-out infinite;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .sonar-ring:nth-child(1) { width: 40px; height: 40px; animation-delay: 0s; }
+  .sonar-ring:nth-child(2) { width: 80px; height: 80px; animation-delay: 0.5s; }
+  .sonar-ring:nth-child(3) { width: 130px; height: 130px; animation-delay: 1s; }
+  .sonar-ring:nth-child(4) { width: 190px; height: 190px; animation-delay: 1.5s; }
+  .sonar-dot {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 8px; height: 8px;
+    background: var(--glow);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 12px var(--glow);
+  }
+  @keyframes sonarPulse {
+    0%   { opacity: 1; transform: translate(-50%,-50%) scale(0.3); }
+    100% { opacity: 0; transform: translate(-50%,-50%) scale(1); }
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    max-width: 860px;
+    padding: 0 2rem;
+  }
+  .hero-eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.4em;
+    color: var(--glow);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 1s 0.3s forwards;
+  }
+  .hero-title {
+    font-size: clamp(3.5rem, 9vw, 8rem);
+    font-weight: 300;
+    line-height: 0.9;
+    color: var(--white);
+    letter-spacing: -0.01em;
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 1s 0.6s forwards;
+  }
+  .hero-title em {
+    font-style: italic;
+    color: var(--glow);
+  }
+  .hero-sub {
+    font-size: 1.25rem;
+    font-weight: 300;
+    color: var(--fog);
+    line-height: 1.7;
+    max-width: 520px;
+    margin: 0 auto 2.5rem;
+    opacity: 0;
+    animation: fadeUp 1s 0.9s forwards;
+  }
+  .hero-actions {
+    display: flex;
+    gap: 1.25rem;
+    justify-content: center;
+    opacity: 0;
+    animation: fadeUp 1s 1.1s forwards;
+  }
+  .btn-primary {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: var(--glow);
+    color: var(--abyss);
+    padding: 1rem 2.2rem;
+    text-decoration: none;
+    font-weight: 700;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 0 24px rgba(0,212,255,0.3);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 40px rgba(0,212,255,0.5); }
+  .btn-secondary {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border: 1px solid rgba(138,180,201,0.4);
+    color: var(--fog);
+    padding: 1rem 2.2rem;
+    text-decoration: none;
+    transition: border-color 0.3s, color 0.3s;
+  }
+  .btn-secondary:hover { border-color: var(--fog); color: var(--white); }
+
+  .scroll-indicator {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0;
+    animation: fadeIn 1s 2s forwards;
+  }
+  .scroll-indicator span {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: var(--fog);
+    text-transform: uppercase;
+  }
+  .scroll-line {
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(to bottom, var(--fog), transparent);
+    animation: scrollPulse 1.8s ease-in-out infinite;
+  }
+  @keyframes scrollPulse {
+    0%,100% { opacity: 0.3; transform: scaleY(1); }
+    50% { opacity: 1; transform: scaleY(1.3); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* DEPTH COUNTER */
+  .depth-bar {
+    background: var(--deep);
+    border-top: 1px solid rgba(0,212,255,0.1);
+    border-bottom: 1px solid rgba(0,212,255,0.1);
+    padding: 1.2rem 3rem;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .depth-stat { text-align: center; }
+  .depth-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.8rem;
+    color: var(--glow);
+    display: block;
+    letter-spacing: -0.02em;
+  }
+  .depth-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--fog);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-top: 0.2rem;
+  }
+  .depth-divider { width: 1px; height: 40px; background: rgba(138,180,201,0.2); }
+
+  /* SECTIONS */
+  section { padding: 7rem 3rem; }
+
+  .section-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.4em;
+    color: var(--glow);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .section-title {
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 300;
+    color: var(--white);
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+  }
+  .section-title em { font-style: italic; color: var(--glow); }
+  .section-body {
+    font-size: 1.15rem;
+    font-weight: 300;
+    color: var(--fog);
+    line-height: 1.85;
+    max-width: 540px;
+  }
+
+  /* MISSION SPLIT */
+  #mission {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    padding: 0;
+    max-width: 100%;
+  }
+  .mission-text {
+    padding: 7rem 5rem 7rem 5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .mission-visual {
+    position: relative;
+    overflow: hidden;
+    min-height: 600px;
+  }
+  .mission-img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    filter: saturate(0.5) brightness(0.7);
+    transition: filter 0.5s, transform 0.6s;
+  }
+  .mission-visual:hover .mission-img { filter: saturate(0.8) brightness(0.85); transform: scale(1.03); }
+  .mission-visual::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, var(--abyss) 0%, transparent 40%);
+    pointer-events: none;
+  }
+  .mission-depth-tag {
+    position: absolute;
+    bottom: 2rem;
+    right: 2rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--glow);
+    letter-spacing: 0.2em;
+    border: 1px solid rgba(0,212,255,0.3);
+    padding: 0.5rem 1rem;
+    background: rgba(1,8,16,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 2;
+  }
+
+  .mission-features { margin-top: 2.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+  .feat-item { display: flex; gap: 1rem; align-items: flex-start; }
+  .feat-icon {
+    width: 36px; height: 36px;
+    border: 1px solid rgba(0,212,255,0.3);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    color: var(--glow);
+  }
+  .feat-text h4 { font-size: 1rem; color: var(--white); font-weight: 400; margin-bottom: 0.2rem; }
+  .feat-text p { font-size: 0.9rem; color: var(--fog); font-weight: 300; line-height: 1.5; }
+
+  /* EXPEDITIONS / VIDEO CARDS */
+  #expeditions {
+    background: var(--deep);
+    border-top: 1px solid rgba(0,212,255,0.08);
+    border-bottom: 1px solid rgba(0,212,255,0.08);
+  }
+  .exp-header { max-width: 1100px; margin: 0 auto 3.5rem; display: flex; justify-content: space-between; align-items: flex-end; }
+  .exp-grid { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5px; }
+  .exp-card {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 3/4;
+    background: #0a1e2d;
+    cursor: pointer;
+  }
+  .exp-card img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    filter: saturate(0.4) brightness(0.65);
+    transition: filter 0.5s, transform 0.6s;
+  }
+  .exp-card:hover img { filter: saturate(0.8) brightness(0.8); transform: scale(1.06); }
+  .exp-card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(1,8,16,0.9) 0%, transparent 50%);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 1.75rem;
+    transition: background 0.4s;
+  }
+  .exp-card:hover .exp-card-overlay {
+    background: linear-gradient(to top, rgba(1,8,16,0.97) 0%, rgba(0,30,50,0.3) 100%);
+  }
+  .exp-card-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.25em;
+    color: var(--glow);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .exp-card-title {
+    font-size: 1.6rem;
+    font-weight: 300;
+    color: var(--white);
+    line-height: 1.15;
+    margin-bottom: 0.5rem;
+  }
+  .exp-card-depth {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--fog);
+    letter-spacing: 0.1em;
+  }
+  .exp-card-desc {
+    font-size: 0.95rem;
+    color: var(--fog);
+    line-height: 1.55;
+    margin-top: 0.75rem;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+    font-weight: 300;
+  }
+  .exp-card:hover .exp-card-desc { max-height: 100px; }
+  .exp-card.featured { grid-column: span 2; aspect-ratio: 16/9; }
+  .exp-card.featured .exp-card-title { font-size: 2.4rem; }
+
+  /* VIDEO SECTION */
+  #film {
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .film-container {
+    position: relative;
+    max-width: 100%;
+  }
+  .film-embed {
+    width: 100%;
+    aspect-ratio: 16/9;
+    border: none;
+    display: block;
+    filter: brightness(0.9) saturate(0.7);
+  }
+  .film-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(1,8,16,0.55);
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  .film-overlay.hidden { display: none; }
+  .play-btn {
+    width: 80px; height: 80px;
+    border: 2px solid var(--glow);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 1rem;
+    transition: background 0.3s, transform 0.3s;
+  }
+  .play-btn:hover { background: rgba(0,212,255,0.15); transform: scale(1.1); }
+  .play-btn svg { margin-left: 4px; }
+  .film-title {
+    font-size: 2rem;
+    font-weight: 300;
+    color: var(--white);
+    letter-spacing: 0.05em;
+  }
+  .film-subtitle {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--glow);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-top: 0.5rem;
+  }
+  .film-caption {
+    background: var(--deep);
+    padding: 2rem 3rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(0,212,255,0.08);
+  }
+  .film-caption p { font-size: 1rem; color: var(--fog); font-weight: 300; max-width: 600px; line-height: 1.7; }
+
+  /* SPECIES GALLERY */
+  #gallery {
+    background: var(--abyss);
+  }
+  .gallery-header { text-align: center; margin-bottom: 3.5rem; }
+  .gallery-header .section-body { margin: 0 auto; text-align: left; max-width: 600px; }
+  .gallery-filter {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 2.5rem;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: transparent;
+    border: 1px solid rgba(138,180,201,0.3);
+    color: var(--fog);
+    padding: 0.5rem 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .filter-btn.active, .filter-btn:hover { border-color: var(--glow); color: var(--glow); }
+  .gallery-grid {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 3px;
+  }
+  .gallery-item {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 1;
+    background: var(--surface);
+    cursor: pointer;
+  }
+  .gallery-item img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    filter: saturate(0.3) brightness(0.7);
+    transition: filter 0.4s, transform 0.5s;
+  }
+  .gallery-item:hover img { filter: saturate(0.9) brightness(0.9); transform: scale(1.08); }
+  .gallery-item-info {
+    position: absolute;
+    inset: 0;
+    background: rgba(1,8,16,0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s;
+    padding: 1rem;
+    text-align: center;
+  }
+  .gallery-item:hover .gallery-item-info { opacity: 1; }
+  .gallery-item-info h4 { font-size: 1rem; color: var(--white); font-weight: 400; margin-bottom: 0.3rem; }
+  .gallery-item-info p { font-size: 0.8rem; color: var(--glow); font-family: 'Space Mono', monospace; font-style: italic; }
+  .gallery-item.wide { grid-column: span 2; aspect-ratio: 2/1; }
+  .gallery-item.tall { grid-row: span 2; aspect-ratio: 1/2; }
+
+  /* LIGHTBOX */
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    background: rgba(1,8,16,0.95);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox-inner { max-width: 900px; width: 100%; position: relative; }
+  .lightbox-img { width: 100%; max-height: 70vh; object-fit: contain; display: block; }
+  .lightbox-caption { margin-top: 1rem; text-align: center; }
+  .lightbox-caption h3 { font-size: 1.5rem; color: var(--white); font-weight: 300; }
+  .lightbox-caption p { font-size: 0.85rem; color: var(--glow); font-family: 'Space Mono', monospace; margin-top: 0.25rem; }
+  .lightbox-close {
+    position: absolute;
+    top: -2rem; right: 0;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--fog);
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    background: none;
+    border: none;
+    text-transform: uppercase;
+  }
+
+  /* TECH */
+  #technology { background: var(--deep); border-top: 1px solid rgba(0,212,255,0.08); }
+  .tech-layout { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1.2fr; gap: 5rem; align-items: center; }
+  .tech-specs { margin-top: 2.5rem; }
+  .spec-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid rgba(138,180,201,0.1);
+  }
+  .spec-row:last-child { border-bottom: none; }
+  .spec-name { font-size: 0.9rem; color: var(--fog); font-weight: 300; }
+  .spec-value { font-family: 'Space Mono', monospace; font-size: 0.85rem; color: var(--glow); }
+
+  /* Vehicle illustration */
+  .vehicle-display {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+  }
+  .vehicle-svg-wrap {
+    position: relative;
+    width: 100%;
+  }
+  .vehicle-svg-wrap svg {
+    width: 100%;
+    filter: drop-shadow(0 0 30px rgba(0,212,255,0.15));
+  }
+
+  /* TEAM */
+  #team { background: var(--abyss); }
+  .team-header { text-align: center; max-width: 600px; margin: 0 auto 3.5rem; }
+  .team-grid { max-width: 900px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
+  .team-card {
+    text-align: center;
+    cursor: pointer;
+  }
+  .team-img-wrap {
+    position: relative;
+    overflow: hidden;
+    border-radius: 50%;
+    width: 140px; height: 140px;
+    margin: 0 auto 1.25rem;
+    border: 1px solid rgba(0,212,255,0.2);
+  }
+  .team-img-wrap img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    filter: saturate(0.3) brightness(0.7);
+    transition: filter 0.4s;
+  }
+  .team-card:hover .team-img-wrap img { filter: saturate(0.7) brightness(0.85); }
+  .team-img-wrap::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle, transparent 50%, rgba(0,212,255,0.05) 100%);
+  }
+  .team-name { font-size: 1.25rem; color: var(--white); font-weight: 400; margin-bottom: 0.3rem; }
+  .team-role { font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--glow); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.6rem; }
+  .team-bio { font-size: 0.9rem; color: var(--fog); line-height: 1.6; font-weight: 300; }
+
+  /* DEPTH TIMELINE */
+  #timeline { background: var(--deep); border-top: 1px solid rgba(0,212,255,0.08); }
+  .timeline-layout { max-width: 900px; margin: 0 auto; display: grid; grid-template-columns: 120px 3px 1fr; gap: 0 2rem; }
+  .timeline-header { grid-column: 1/-1; margin-bottom: 3rem; }
+  .tl-depth {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--glow);
+    text-align: right;
+    padding-top: 0.15rem;
+  }
+  .tl-line {
+    background: linear-gradient(to bottom, var(--glow), rgba(0,212,255,0.1));
+    position: relative;
+  }
+  .tl-dot {
+    width: 9px; height: 9px;
+    background: var(--glow);
+    border-radius: 50%;
+    position: absolute;
+    top: 0.2rem; left: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0 0 10px var(--glow);
+  }
+  .tl-content { padding-bottom: 3rem; }
+  .tl-content h4 { font-size: 1.3rem; color: var(--white); font-weight: 300; margin-bottom: 0.5rem; }
+  .tl-content p { font-size: 0.95rem; color: var(--fog); line-height: 1.7; font-weight: 300; }
+  .tl-content .tl-tag {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--fog);
+    letter-spacing: 0.15em;
+    border: 1px solid rgba(138,180,201,0.2);
+    padding: 0.25rem 0.6rem;
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+  }
+  .tl-spacer { grid-column: 1/-1; height: 0; }
+
+  /* CONTACT */
+  #contact { background: var(--abyss); }
+  .contact-layout { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 6rem; align-items: start; }
+  .contact-form { display: flex; flex-direction: column; gap: 1.25rem; }
+  .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+  .form-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: var(--fog);
+    text-transform: uppercase;
+  }
+  .form-input, .form-select, .form-textarea {
+    background: rgba(14,34,51,0.8);
+    border: 1px solid rgba(138,180,201,0.2);
+    color: var(--white);
+    padding: 0.85rem 1rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.3s;
+    width: 100%;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--glow); }
+  .form-select { cursor: pointer; }
+  .form-select option { background: var(--deep); }
+  .form-textarea { resize: vertical; min-height: 130px; }
+  .form-submit {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: var(--glow);
+    color: var(--abyss);
+    border: none;
+    padding: 1rem 2rem;
+    cursor: pointer;
+    font-weight: 700;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 0 20px rgba(0,212,255,0.2);
+    align-self: flex-start;
+  }
+  .form-submit:hover { transform: translateY(-2px); box-shadow: 0 0 35px rgba(0,212,255,0.4); }
+
+  .contact-info { padding-top: 1rem; }
+  .contact-block { margin-bottom: 2.5rem; }
+  .contact-block-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.25em;
+    color: var(--glow);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .contact-block-value { font-size: 1.1rem; color: var(--white); font-weight: 300; line-height: 1.7; }
+  .contact-coords {
+    margin-top: 2rem;
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--fog);
+    letter-spacing: 0.1em;
+    border: 1px solid rgba(138,180,201,0.15);
+    padding: 0.75rem 1.25rem;
+    line-height: 1.8;
+  }
+
+  /* FOOTER */
+  footer {
+    background: var(--abyss);
+    border-top: 1px solid rgba(0,212,255,0.08);
+    padding: 3rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+  }
+  .footer-logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 1rem;
+    color: var(--white);
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+  }
+  .footer-logo span { color: var(--glow); }
+  .footer-links { display: flex; gap: 2rem; list-style: none; flex-wrap: wrap; }
+  .footer-links a {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--fog);
+    text-decoration: none;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .footer-links a:hover { color: var(--white); }
+  .footer-copy {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    color: rgba(138,180,201,0.4);
+    letter-spacing: 0.1em;
+  }
+
+  /* Reveal animations */
+  .reveal {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+  .reveal-delay-1 { transition-delay: 0.1s; }
+  .reveal-delay-2 { transition-delay: 0.2s; }
+  .reveal-delay-3 { transition-delay: 0.3s; }
+  .reveal-delay-4 { transition-delay: 0.4s; }
+  .reveal-delay-5 { transition-delay: 0.5s; }
+  .reveal-delay-6 { transition-delay: 0.6s; }
+
+  /* Counter animation */
+  .count-up { transition: all 0.3s; }
+
+  /* Noise overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.04;
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    #mission { grid-template-columns: 1fr; }
+    .mission-visual { min-height: 350px; }
+    .exp-grid { grid-template-columns: 1fr 1fr; }
+    .exp-card.featured { grid-column: span 2; aspect-ratio: 16/9; }
+    .gallery-grid { grid-template-columns: 1fr 1fr; }
+    .tech-layout { grid-template-columns: 1fr; }
+    .team-grid { grid-template-columns: 1fr 1fr; }
+    .contact-layout { grid-template-columns: 1fr; gap: 3rem; }
+    nav { padding: 1.25rem 1.5rem; }
+    section { padding: 5rem 1.5rem; }
+    .timeline-layout { grid-template-columns: 80px 3px 1fr; gap: 0 1rem; }
+  }
+  @media (max-width: 600px) {
+    .nav-links { display: none; }
+    .exp-grid { grid-template-columns: 1fr; }
+    .exp-card.featured { grid-column: span 1; aspect-ratio: 3/4; }
+    .team-grid { grid-template-columns: 1fr; }
+    .gallery-grid { grid-template-columns: 1fr 1fr; }
+    .gallery-item.wide { grid-column: span 2; }
+    .depth-bar { padding: 1.25rem 1.5rem; }
+    .depth-divider { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Cursor -->
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- NAV -->
+<nav id="navbar">
+  <a href="#" class="nav-logo">ABY<span>SS</span>AL</a>
+  <ul class="nav-links">
+    <li><a href="#mission">Mission</a></li>
+    <li><a href="#expeditions">Expeditions</a></li>
+    <li><a href="#gallery">Species</a></li>
+    <li><a href="#technology">Technology</a></li>
+    <li><a href="#team">Team</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+  <a href="#contact" class="nav-cta">Join Crew</a>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-video-wrap">
+    <!-- Embed a real ocean timelapse via YouTube iframe (no autoplay cookie) -->
+    <iframe class="film-embed"
+      src="https://www.youtube.com/embed/nLgBS9zHa-g?autoplay=1&mute=1&loop=1&playlist=nLgBS9zHa-g&controls=0&showinfo=0&modestbranding=1&iv_load_policy=3"
+      style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;border:none;filter:brightness(0.4) saturate(0.5) hue-rotate(180deg);"
+      allow="autoplay; encrypted-media" allowfullscreen></iframe>
+  </div>
+
+  <!-- Animated bubbles -->
+  <div class="particles" id="particles"></div>
+
+  <!-- Sonar -->
+  <div class="sonar">
+    <div class="sonar-ring"></div>
+    <div class="sonar-ring"></div>
+    <div class="sonar-ring"></div>
+    <div class="sonar-ring"></div>
+    <div class="sonar-dot"></div>
+  </div>
+
+  <div class="hero-content">
+    <p class="hero-eyebrow">Est. 2017 &nbsp;·&nbsp; Mariana Initiative &nbsp;·&nbsp; 36 Expeditions</p>
+    <h1 class="hero-title">Beyond the <em>Last</em><br>Known Depth</h1>
+    <p class="hero-sub">Pioneering humanity's understanding of Earth's most unexplored frontier — the abyssal ocean floor.</p>
+    <div class="hero-actions">
+      <a href="#expeditions" class="btn-primary">Explore Expeditions</a>
+      <a href="#film" class="btn-secondary">Watch Film &darr;</a>
+    </div>
+  </div>
+
+  <div class="scroll-indicator">
+    <span>Dive deeper</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- DEPTH STATS BAR -->
+<div class="depth-bar">
+  <div class="depth-stat"><span class="depth-num count-up" data-target="11034">0</span><span class="depth-label">Max depth (metres)</span></div>
+  <div class="depth-divider"></div>
+  <div class="depth-stat"><span class="depth-num count-up" data-target="36">0</span><span class="depth-label">Expeditions complete</span></div>
+  <div class="depth-divider"></div>
+  <div class="depth-stat"><span class="depth-num count-up" data-target="847">0</span><span class="depth-label">Species documented</span></div>
+  <div class="depth-divider"></div>
+  <div class="depth-stat"><span class="depth-num count-up" data-target="124">0</span><span class="depth-label">New species found</span></div>
+  <div class="depth-divider"></div>
+  <div class="depth-stat"><span class="depth-num count-up" data-target="4200">0</span><span class="depth-label">Hours below 1000m</span></div>
+</div>
+
+<!-- MISSION -->
+<section id="mission">
+  <div class="mission-text">
+    <p class="section-label reveal">Our Mission</p>
+    <h2 class="section-title reveal reveal-delay-1">Mapping the <em>Unmapped</em></h2>
+    <p class="section-body reveal reveal-delay-2">
+      More than 80% of our oceans remain unexplored. ABYSSAL exists to change that — deploying state-of-the-art remotely operated vehicles, AI-assisted cataloguing, and long-duration submersibles into the hadal zone where pressure exceeds 1,000 atmospheres.
+    </p>
+    <div class="mission-features reveal reveal-delay-3">
+      <div class="feat-item">
+        <div class="feat-icon">◎</div>
+        <div class="feat-text">
+          <h4>Full-Spectrum Mapping</h4>
+          <p>Sub-centimetre resolution sonar mapping of unexplored ocean floor terrain.</p>
+        </div>
+      </div>
+      <div class="feat-item">
+        <div class="feat-icon">⬡</div>
+        <div class="feat-text">
+          <h4>Biodiversity Cataloguing</h4>
+          <p>Environmental DNA sampling combined with visual AI for real-time species identification.</p>
+        </div>
+      </div>
+      <div class="feat-item">
+        <div class="feat-icon">◈</div>
+        <div class="feat-text">
+          <h4>Climate Research</h4>
+          <p>Deep current monitoring to model the ocean's role in global heat distribution.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="mission-visual">
+    <img class="mission-img"
+      src="https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=1200&q=80&fit=crop"
+      alt="Deep ocean research vessel at sea" />
+    <div class="mission-depth-tag">28°N 142°E &nbsp;·&nbsp; WESTERN PACIFIC</div>
+  </div>
+</section>
+
+<!-- EXPEDITIONS -->
+<section id="expeditions">
+  <div class="exp-header reveal">
+    <div>
+      <p class="section-label">Field Operations</p>
+      <h2 class="section-title">Expeditions</h2>
+    </div>
+    <a href="#contact" class="btn-secondary">View All &rarr;</a>
+  </div>
+  <div class="exp-grid">
+    <div class="exp-card featured reveal">
+      <img src="https://images.unsplash.com/photo-1530053969600-caed2596d242?w=1400&q=80&fit=crop" alt="Mariana Trench expedition" />
+      <div class="exp-card-overlay">
+        <span class="exp-card-tag">Featured · 2024</span>
+        <h3 class="exp-card-title">Mariana Deep<br>Survey VII</h3>
+        <p class="exp-card-depth">10,924m · Challenger Deep, Pacific</p>
+        <p class="exp-card-desc">Our seventh and deepest dive into Challenger Deep, deploying dual ROVs in a first-ever coordinated mapping operation at full hadal depth.</p>
+      </div>
+    </div>
+    <div class="exp-card reveal reveal-delay-1">
+      <img src="https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=800&q=80&fit=crop" alt="Hydrothermal vents expedition" />
+      <div class="exp-card-overlay">
+        <span class="exp-card-tag">2024</span>
+        <h3 class="exp-card-title">Lost City<br>Hydrothermal</h3>
+        <p class="exp-card-depth">800m · Mid-Atlantic Ridge</p>
+        <p class="exp-card-desc">Biological sampling from carbonate chimneys supporting extremophile ecosystems entirely independent of sunlight.</p>
+      </div>
+    </div>
+    <div class="exp-card reveal reveal-delay-2">
+      <img src="https://images.unsplash.com/photo-1583212292454-1fe6229603b7?w=800&q=80&fit=crop" alt="Antarctic deep ocean" />
+      <div class="exp-card-overlay">
+        <span class="exp-card-tag">2023</span>
+        <h3 class="exp-card-title">Weddell Sea<br>Abyss</h3>
+        <p class="exp-card-depth">5,420m · Antarctic Ocean</p>
+        <p class="exp-card-desc">Discovering cold-water coral gardens and the first confirmed sighting of Bathyphysa conifera in Antarctic waters.</p>
+      </div>
+    </div>
+    <div class="exp-card reveal reveal-delay-3">
+      <img src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&q=80&fit=crop" alt="Coral deep sea" />
+      <div class="exp-card-overlay">
+        <span class="exp-card-tag">2023</span>
+        <h3 class="exp-card-title">Kermadec<br>Trench Survey</h3>
+        <p class="exp-card-depth">9,908m · Southwest Pacific</p>
+        <p class="exp-card-desc">Recording the deepest fish species population density ever observed, rewriting models of hadal zone ecology.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FILM / VIDEO -->
+<section id="film">
+  <div class="film-container">
+    <iframe class="film-embed" id="mainVideo"
+      src="https://www.youtube.com/embed/IM4eDvPP-jw?controls=1&modestbranding=1&rel=0"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen></iframe>
+    <div class="film-overlay" id="filmOverlay" onclick="playVideo()">
+      <div class="play-btn">
+        <svg width="20" height="24" viewBox="0 0 20 24" fill="none">
+          <path d="M2 2L18 12L2 22V2Z" fill="#00d4ff" stroke="#00d4ff" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h2 class="film-title">Into the Dark</h2>
+      <p class="film-subtitle">Feature Documentary · 2024</p>
+    </div>
+  </div>
+  <div class="film-caption">
+    <p>Our 2024 feature documentary follows the crew of RV <em>Bathys</em> on a 64-day mission to the Philippine Trench — the longest unbroken deep-sea survey ever conducted.</p>
+    <a href="#" class="btn-secondary" style="white-space:nowrap;">Full Film &rarr;</a>
+  </div>
+</section>
+
+<!-- GALLERY -->
+<section id="gallery">
+  <div class="gallery-header reveal">
+    <p class="section-label">Biodiversity Archive</p>
+    <h2 class="section-title">Species <em>Encountered</em></h2>
+    <p class="section-body">An expanding visual archive of organisms documented across 847 species, 124 previously unknown to science.</p>
+  </div>
+
+  <div class="gallery-filter reveal">
+    <button class="filter-btn active" onclick="filterGallery('all', this)">All</button>
+    <button class="filter-btn" onclick="filterGallery('fish', this)">Fish</button>
+    <button class="filter-btn" onclick="filterGallery('cephalopod', this)">Cephalopods</button>
+    <button class="filter-btn" onclick="filterGallery('coral', this)">Coral</button>
+    <button class="filter-btn" onclick="filterGallery('crustacean', this)">Crustaceans</button>
+  </div>
+
+  <div class="gallery-grid" id="galleryGrid">
+    <div class="gallery-item wide reveal" data-cat="fish" onclick="openLightbox('https://images.unsplash.com/photo-1535591273668-578e31182c4f?w=1400&q=80','Bathypelagic Dragonfish','Aristostomias scintillans · 800–2500m')">
+      <img src="https://images.unsplash.com/photo-1535591273668-578e31182c4f?w=800&q=80&fit=crop" alt="Dragonfish" />
+      <div class="gallery-item-info"><h4>Bathypelagic Dragonfish</h4><p>Aristostomias scintillans</p></div>
+    </div>
+    <div class="gallery-item reveal reveal-delay-1" data-cat="cephalopod" onclick="openLightbox('https://images.unsplash.com/photo-1545671913-b89ac1b4ac10?w=1400&q=80','Vampire Squid','Vampyroteuthis infernalis · 600–900m')">
+      <img src="https://images.unsplash.com/photo-1545671913-b89ac1b4ac10?w=600&q=80&fit=crop" alt="Squid" />
+      <div class="gallery-item-info"><h4>Vampire Squid</h4><p>Vampyroteuthis infernalis</p></div>
+    </div>
+    <div class="gallery-item reveal reveal-delay-2" data-cat="coral" onclick="openLightbox('https://images.unsplash.com/photo-1546026423-cc4642628d2b?w=1400&q=80','Deep Cold Coral','Lophelia pertusa · 200–2000m')">
+      <img src="https://images.unsplash.com/photo-1546026423-cc4642628d2b?w=600&q=80&fit=crop" alt="Deep coral" />
+      <div class="gallery-item-info"><h4>Deep Cold Coral</h4><p>Lophelia pertusa</p></div>
+    </div>
+    <div class="gallery-item reveal reveal-delay-1" data-cat="crustacean" onclick="openLightbox('https://images.unsplash.com/photo-1571752726703-5e7d1f6a986d?w=1400&q=80','Giant Isopod','Bathynomus giganteus · 170–2140m')">
+      <img src="https://images.unsplash.com/photo-1571752726703-5e7d1f6a986d?w=600&q=80&fit=crop" alt="Isopod" />
+      <div class="gallery-item-info"><h4>Giant Isopod</h4><p>Bathynomus giganteus</p></div>
+    </div>
+    <div class="gallery-item reveal reveal-delay-2" data-cat="fish" onclick="openLightbox('https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=1400&q=80','Anglerfish','Melanocetus johnsonii · 200–2000m')">
+      <img src="https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=600&q=80&fit=crop" alt="Anglerfish" />
+      <div class="gallery-item-info"><h4>Deep-sea Anglerfish</h4><p>Melanocetus johnsonii</p></div>
+    </div>
+    <div class="gallery-item wide reveal reveal-delay-3" data-cat="cephalopod" onclick="openLightbox('https://images.unsplash.com/photo-1459478309853-2c33a60058e7?w=1400&q=80','Dumbo Octopus','Grimpoteuthis discoveryi · 3000–4000m')">
+      <img src="https://images.unsplash.com/photo-1459478309853-2c33a60058e7?w=800&q=80&fit=crop" alt="Octopus" />
+      <div class="gallery-item-info"><h4>Dumbo Octopus</h4><p>Grimpoteuthis discoveryi</p></div>
+    </div>
+    <div class="gallery-item reveal reveal-delay-4" data-cat="coral" onclick="openLightbox('https://images.unsplash.com/photo-1504542982118-59308b40fe0c?w=1400&q=80','Black Coral','Antipathes grandis · 50–8000m')">
+      <img src="https://images.unsplash.com/photo-1504542982118-59308b40fe0c?w=600&q=80&fit=crop" alt="Black coral" />
+      <div class="gallery-item-info"><h4>Black Coral</h4><p>Antipathes grandis</p></div>
+    </div>
+    <div class="gallery-item reveal reveal-delay-5" data-cat="crustacean" onclick="openLightbox('https://images.unsplash.com/photo-1563991655280-cb95c90ca2fb?w=1400&q=80','Yeti Crab','Kiwa hirsuta · 2200m')">
+      <img src="https://images.unsplash.com/photo-1563991655280-cb95c90ca2fb?w=600&q=80&fit=crop" alt="Crab" />
+      <div class="gallery-item-info"><h4>Yeti Crab</h4><p>Kiwa hirsuta</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <div class="lightbox-inner" onclick="event.stopPropagation()">
+    <button class="lightbox-close" onclick="closeLightbox()">✕ &nbsp; Close</button>
+    <img class="lightbox-img" id="lightboxImg" src="" alt="" />
+    <div class="lightbox-caption">
+      <h3 id="lightboxTitle"></h3>
+      <p id="lightboxSub"></p>
+    </div>
+  </div>
+</div>
+
+<!-- TECHNOLOGY -->
+<section id="technology">
+  <div class="tech-layout">
+    <div>
+      <p class="section-label reveal">Engineering</p>
+      <h2 class="section-title reveal reveal-delay-1">The <em>Nereid</em><br>ROV Platform</h2>
+      <p class="section-body reveal reveal-delay-2">
+        Our flagship remotely operated vehicle represents a decade of iteration. Built to withstand 16,000 psi of hydrostatic pressure, Nereid III carries a full scientific payload including paired 8K cameras, manipulator arms with sub-gram force sensing, and a novel real-time fibre-optic tether system.
+      </p>
+      <div class="tech-specs reveal reveal-delay-3">
+        <div class="spec-row"><span class="spec-name">Operating depth</span><span class="spec-value">11,000m rated</span></div>
+        <div class="spec-row"><span class="spec-name">Pressure rating</span><span class="spec-value">16,000 psi</span></div>
+        <div class="spec-row"><span class="spec-name">Camera system</span><span class="spec-value">Dual 8K · 360°</span></div>
+        <div class="spec-row"><span class="spec-name">Battery endurance</span><span class="spec-value">72 hours</span></div>
+        <div class="spec-row"><span class="spec-name">Manipulator DOF</span><span class="spec-value">7-axis · 4kg payload</span></div>
+        <div class="spec-row"><span class="spec-name">Tether length</span><span class="spec-value">15,000m fibre-optic</span></div>
+        <div class="spec-row"><span class="spec-name">Sample capacity</span><span class="spec-value">32 individual bio-containers</span></div>
+      </div>
+    </div>
+    <div class="vehicle-display reveal reveal-delay-2">
+      <!-- SVG ROV illustration -->
+      <svg viewBox="0 0 500 340" xmlns="http://www.w3.org/2000/svg" fill="none">
+        <defs>
+          <filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <linearGradient id="rovGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#0e2233"/>
+            <stop offset="100%" stop-color="#061623"/>
+          </linearGradient>
+          <linearGradient id="glowGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="rgba(0,212,255,0)"/>
+            <stop offset="50%" stop-color="rgba(0,212,255,0.8)"/>
+            <stop offset="100%" stop-color="rgba(0,212,255,0)"/>
+          </linearGradient>
+        </defs>
+
+        <!-- Background glow -->
+        <ellipse cx="250" cy="190" rx="200" ry="100" fill="rgba(0,212,255,0.04)"/>
+
+        <!-- Main body -->
+        <rect x="120" y="120" width="260" height="130" rx="18" fill="url(#rovGrad)" stroke="#1a3a52" stroke-width="1.5"/>
+        <rect x="130" y="130" width="240" height="110" rx="14" fill="#081520" stroke="rgba(0,212,255,0.15)" stroke-width="1"/>
+
+        <!-- Panel lines -->
+        <line x1="250" y1="135" x2="250" y2="235" stroke="rgba(0,212,255,0.12)" stroke-width="1"/>
+        <line x1="130" y1="182" x2="370" y2="182" stroke="rgba(0,212,255,0.12)" stroke-width="1"/>
+
+        <!-- Left camera housing -->
+        <circle cx="165" cy="170" r="22" fill="#0a1e2d" stroke="rgba(0,212,255,0.3)" stroke-width="1.5"/>
+        <circle cx="165" cy="170" r="14" fill="#050d14" stroke="rgba(0,212,255,0.2)" stroke-width="1"/>
+        <circle cx="165" cy="170" r="7" fill="#00d4ff" opacity="0.6" filter="url(#glow)"/>
+        <circle cx="162" cy="167" r="2" fill="rgba(255,255,255,0.5)"/>
+
+        <!-- Right camera housing -->
+        <circle cx="335" cy="170" r="22" fill="#0a1e2d" stroke="rgba(0,212,255,0.3)" stroke-width="1.5"/>
+        <circle cx="335" cy="170" r="14" fill="#050d14" stroke="rgba(0,212,255,0.2)" stroke-width="1"/>
+        <circle cx="335" cy="170" r="7" fill="#00d4ff" opacity="0.6" filter="url(#glow)"/>
+        <circle cx="332" cy="167" r="2" fill="rgba(255,255,255,0.5)"/>
+
+        <!-- Lights across top -->
+        <rect x="165" y="125" width="170" height="8" rx="4" fill="#0a1e2d" stroke="rgba(0,212,255,0.2)" stroke-width="0.5"/>
+        <circle cx="185" cy="129" r="3" fill="#00d4ff" opacity="0.8" filter="url(#glow)"/>
+        <circle cx="205" cy="129" r="3" fill="#00d4ff" opacity="0.8" filter="url(#glow)"/>
+        <circle cx="225" cy="129" r="3" fill="#00d4ff" opacity="0.8" filter="url(#glow)"/>
+        <circle cx="275" cy="129" r="3" fill="#00d4ff" opacity="0.8" filter="url(#glow)"/>
+        <circle cx="295" cy="129" r="3" fill="#00d4ff" opacity="0.8" filter="url(#glow)"/>
+        <circle cx="315" cy="129" r="3" fill="#00d4ff" opacity="0.8" filter="url(#glow)"/>
+
+        <!-- Light beams -->
+        <path d="M185 133 L165 175" stroke="rgba(0,212,255,0.06)" stroke-width="12" stroke-linecap="round"/>
+        <path d="M315 133 L335 175" stroke="rgba(0,212,255,0.06)" stroke-width="12" stroke-linecap="round"/>
+
+        <!-- Thrusters top-left -->
+        <rect x="90" y="108" width="46" height="22" rx="6" fill="#0a1e2d" stroke="rgba(0,212,255,0.25)" stroke-width="1"/>
+        <line x1="100" y1="119" x2="126" y2="119" stroke="rgba(0,212,255,0.3)" stroke-width="1"/>
+        <ellipse cx="90" cy="119" rx="6" ry="8" fill="#061623" stroke="rgba(0,212,255,0.2)" stroke-width="1"/>
+
+        <!-- Thrusters top-right -->
+        <rect x="364" y="108" width="46" height="22" rx="6" fill="#0a1e2d" stroke="rgba(0,212,255,0.25)" stroke-width="1"/>
+        <line x1="374" y1="119" x2="400" y2="119" stroke="rgba(0,212,255,0.3)" stroke-width="1"/>
+        <ellipse cx="410" cy="119" rx="6" ry="8" fill="#061623" stroke="rgba(0,212,255,0.2)" stroke-width="1"/>
+
+        <!-- Thrusters bottom-left -->
+        <rect x="90" y="232" width="46" height="22" rx="6" fill="#0a1e2d" stroke="rgba(0,212,255,0.25)" stroke-width="1"/>
+        <line x1="100" y1="243" x2="126" y2="243" stroke="rgba(0,212,255,0.3)" stroke-width="1"/>
+        <ellipse cx="90" cy="243" rx="6" ry="8" fill="#061623" stroke="rgba(0,212,255,0.2)" stroke-width="1"/>
+
+        <!-- Thrusters bottom-right -->
+        <rect x="364" y="232" width="46" height="22" rx="6" fill="#0a1e2d" stroke="rgba(0,212,255,0.25)" stroke-width="1"/>
+        <line x1="374" y1="243" x2="400" y2="243" stroke="rgba(0,212,255,0.3)" stroke-width="1"/>
+        <ellipse cx="410" cy="243" rx="6" ry="8" fill="#061623" stroke="rgba(0,212,255,0.2)" stroke-width="1"/>
+
+        <!-- Connector arms -->
+        <line x1="120" y1="119" x2="136" y2="119" stroke="#1a3a52" stroke-width="2"/>
+        <line x1="364" y1="119" x2="380" y2="119" stroke="#1a3a52" stroke-width="2"/>
+        <line x1="120" y1="243" x2="136" y2="243" stroke="#1a3a52" stroke-width="2"/>
+        <line x1="364" y1="243" x2="380" y2="243" stroke="#1a3a52" stroke-width="2"/>
+
+        <!-- Manipulator arm -->
+        <line x1="130" y1="235" x2="80" y2="285" stroke="rgba(0,212,255,0.4)" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="80" y1="285" x2="55" y2="275" stroke="rgba(0,212,255,0.4)" stroke-width="2" stroke-linecap="round"/>
+        <line x1="80" y1="285" x2="65" y2="295" stroke="rgba(0,212,255,0.4)" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="80" cy="285" r="5" fill="rgba(0,212,255,0.3)" stroke="rgba(0,212,255,0.6)" stroke-width="1"/>
+
+        <!-- Sample containers -->
+        <rect x="185" y="200" width="30" height="22" rx="4" fill="#0a1e2d" stroke="rgba(0,212,255,0.3)" stroke-width="1"/>
+        <rect x="222" y="200" width="30" height="22" rx="4" fill="#0a1e2d" stroke="rgba(0,212,255,0.3)" stroke-width="1"/>
+        <rect x="259" y="200" width="30" height="22" rx="4" fill="#061e30" stroke="rgba(0,212,255,0.5)" stroke-width="1"/>
+        <text x="274" y="215" font-family="monospace" font-size="7" fill="rgba(0,212,255,0.7)" text-anchor="middle">■</text>
+        <rect x="296" y="200" width="30" height="22" rx="4" fill="#0a1e2d" stroke="rgba(0,212,255,0.3)" stroke-width="1"/>
+
+        <!-- Status indicators -->
+        <circle cx="200" cy="148" r="3" fill="#1D9E75" filter="url(#glow)" opacity="0.9"/>
+        <circle cx="215" cy="148" r="3" fill="#1D9E75" filter="url(#glow)" opacity="0.9"/>
+        <circle cx="230" cy="148" r="3" fill="#f0a500" filter="url(#glow)" opacity="0.9"/>
+        <circle cx="245" cy="148" r="3" fill="#1D9E75" filter="url(#glow)" opacity="0.9"/>
+
+        <!-- Tether connection -->
+        <line x1="250" y1="120" x2="250" y2="85" stroke="rgba(0,212,255,0.3)" stroke-width="2" stroke-dasharray="4 3"/>
+        <circle cx="250" cy="82" r="5" fill="rgba(0,212,255,0.2)" stroke="rgba(0,212,255,0.5)" stroke-width="1"/>
+
+        <!-- Label -->
+        <text x="250" y="318" font-family="monospace" font-size="9" fill="rgba(138,180,201,0.5)" text-anchor="middle" letter-spacing="4">NEREID III · UNIT 07</text>
+
+        <!-- Scan line animation -->
+        <rect id="scanLine" x="120" y="120" width="260" height="2" fill="url(#glowGrad)" opacity="0.5">
+          <animateTransform attributeName="transform" type="translate" values="0,0;0,128;0,0" dur="3s" repeatCount="indefinite"/>
+        </rect>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- TEAM -->
+<section id="team">
+  <div class="team-header reveal">
+    <p class="section-label">The People</p>
+    <h2 class="section-title">Research <em>Crew</em></h2>
+  </div>
+  <div class="team-grid">
+    <div class="team-card reveal">
+      <div class="team-img-wrap">
+        <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&q=80&fit=crop&crop=face" alt="Dr. Elena Vasquez" />
+      </div>
+      <p class="team-role">Chief Science Officer</p>
+      <h3 class="team-name">Dr. Elena Vasquez</h3>
+      <p class="team-bio">Marine biologist specialising in chemosynthetic ecosystems. 14 years of deep-sea field research across four ocean basins.</p>
+    </div>
+    <div class="team-card reveal reveal-delay-2">
+      <div class="team-img-wrap">
+        <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&q=80&fit=crop&crop=face" alt="Kenji Nakamura" />
+      </div>
+      <p class="team-role">Lead ROV Pilot</p>
+      <h3 class="team-name">Kenji Nakamura</h3>
+      <p class="team-bio">Former JAMSTEC engineer and chief pilot of Shinkai 6500. Logged 3,200 hours of personal deep submergence time.</p>
+    </div>
+    <div class="team-card reveal reveal-delay-4">
+      <div class="team-img-wrap">
+        <img src="https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?w=400&q=80&fit=crop&crop=face" alt="Dr. Amara Osei" />
+      </div>
+      <p class="team-role">Geochemistry Lead</p>
+      <h3 class="team-name">Dr. Amara Osei</h3>
+      <p class="team-bio">Expert in seafloor mineralogy and hydrothermal vent geochemistry. Author of 40+ peer-reviewed publications.</p>
+    </div>
+  </div>
+</section>
+
+<!-- TIMELINE -->
+<section id="timeline">
+  <div class="timeline-layout">
+    <div class="timeline-header">
+      <p class="section-label reveal">Depth Log</p>
+      <h2 class="section-title reveal reveal-delay-1">Dive into <em>History</em></h2>
+    </div>
+
+    <div class="tl-depth reveal">200m</div>
+    <div class="tl-line"><div class="tl-dot"></div></div>
+    <div class="tl-content reveal reveal-delay-1">
+      <span class="tl-tag">2017 · Founding</span>
+      <h4>ABYSSAL is established</h4>
+      <p>Founded in Lisbon by a team of oceanographers and engineers with a shared belief that the deep ocean holds keys to understanding Earth's climate, origins of life, and biodiversity.</p>
+    </div>
+
+    <div class="tl-depth reveal">800m</div>
+    <div class="tl-line"><div class="tl-dot"></div></div>
+    <div class="tl-content reveal reveal-delay-1">
+      <span class="tl-tag">2019 · First Expedition</span>
+      <h4>Azores Seamount Survey</h4>
+      <p>Our inaugural mission discovered a cold-water coral reef system on Condor Seamount, with 11 species new to the Azores region. The Nereid I ROV performs flawlessly across 14 dives.</p>
+    </div>
+
+    <div class="tl-depth reveal">3,800m</div>
+    <div class="tl-line"><div class="tl-dot"></div></div>
+    <div class="tl-content reveal reveal-delay-1">
+      <span class="tl-tag">2021 · Breakthrough</span>
+      <h4>New species confirmed: A. bathyalis</h4>
+      <p>DNA sequencing confirms a new species of snailfish — Abyssallus bathyalis — setting a new record for the deepest confirmed vertebrate in the Atlantic basin.</p>
+    </div>
+
+    <div class="tl-depth reveal">10,924m</div>
+    <div class="tl-line"><div class="tl-dot"></div></div>
+    <div class="tl-content reveal reveal-delay-1">
+      <span class="tl-tag">2024 · Record Dive</span>
+      <h4>Challenger Deep, Mariana VII</h4>
+      <p>The Nereid III reaches full ocean depth in Challenger Deep, recovering sediment cores and biological samples from the deepest point on Earth while streaming 8K footage live.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact">
+  <div class="contact-layout">
+    <div>
+      <p class="section-label reveal">Get Involved</p>
+      <h2 class="section-title reveal reveal-delay-1">Join the <em>Mission</em></h2>
+      <p class="section-body reveal reveal-delay-2">Whether you're a researcher, funder, filmmaker, or simply passionate about the deep ocean — we want to hear from you.</p>
+
+      <div class="contact-info reveal reveal-delay-3">
+        <div class="contact-block">
+          <p class="contact-block-label">Research inquiries</p>
+          <p class="contact-block-value">science@abyssal.org</p>
+        </div>
+        <div class="contact-block">
+          <p class="contact-block-label">Press & media</p>
+          <p class="contact-block-value">press@abyssal.org</p>
+        </div>
+        <div class="contact-block">
+          <p class="contact-block-label">Headquarters</p>
+          <p class="contact-block-value">Rua do Arsenal 30<br>1100-038 Lisbon, Portugal</p>
+        </div>
+        <div class="contact-coords">
+          38°42'34"N &nbsp;9°8'16"W<br>
+          RV BATHYS · AT SEA
+        </div>
+      </div>
+    </div>
+
+    <div class="reveal reveal-delay-2">
+      <form class="contact-form" onsubmit="handleSubmit(event)">
+        <div class="form-group">
+          <label class="form-label">Full name</label>
+          <input type="text" class="form-input" placeholder="Your name" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email address</label>
+          <input type="email" class="form-input" placeholder="you@email.com" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Area of interest</label>
+          <select class="form-select form-input">
+            <option value="">Select one…</option>
+            <option>Scientific collaboration</option>
+            <option>Funding & partnership</option>
+            <option>Media & documentary</option>
+            <option>Volunteer & crew</option>
+            <option>Education & outreach</option>
+            <option>General enquiry</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Message</label>
+          <textarea class="form-textarea" placeholder="Tell us about your interest in ABYSSAL…"></textarea>
+        </div>
+        <button type="submit" class="form-submit">Send Message &rarr;</button>
+        <p id="formMsg" style="font-family:monospace;font-size:0.7rem;color:#00d4ff;margin-top:0.5rem;display:none;">✓ Message received. We'll respond within 48 hours.</p>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">ABY<span>SS</span>AL</div>
+  <ul class="footer-links">
+    <li><a href="#mission">Mission</a></li>
+    <li><a href="#expeditions">Expeditions</a></li>
+    <li><a href="#gallery">Species</a></li>
+    <li><a href="#technology">Technology</a></li>
+    <li><a href="#">Press</a></li>
+    <li><a href="#">Privacy</a></li>
+  </ul>
+  <p class="footer-copy">© 2025 ABYSSAL Foundation · Lisbon</p>
+</footer>
+
+<script>
+  // Custom cursor
+  const cursor = document.getElementById('cursor');
+  const ring = document.getElementById('cursorRing');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; cursor.style.left = mx+'px'; cursor.style.top = my+'px'; });
+  setInterval(() => {
+    rx += (mx-rx)*0.12; ry += (my-ry)*0.12;
+    ring.style.left = Math.round(rx)+'px'; ring.style.top = Math.round(ry)+'px';
+  }, 16);
+  document.querySelectorAll('a,button,.exp-card,.gallery-item,.team-card').forEach(el => {
+    el.addEventListener('mouseenter', () => { ring.style.width='56px'; ring.style.height='56px'; });
+    el.addEventListener('mouseleave', () => { ring.style.width='36px'; ring.style.height='36px'; });
+  });
+
+  // Navbar scroll
+  window.addEventListener('scroll', () => {
+    document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 60);
+  });
+
+  // Bubble particles
+  const particleWrap = document.getElementById('particles');
+  for (let i = 0; i < 40; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 4 + 1;
+    const hue = Math.random() > 0.5 ? '#00d4ff' : '#8ab4c9';
+    p.style.cssText = `
+      width:${size}px; height:${size}px;
+      left:${Math.random()*100}%;
+      background:${hue};
+      animation-duration:${6+Math.random()*10}s;
+      animation-delay:${Math.random()*8}s;
+      --drift:${(Math.random()-0.5)*80}px;
+    `;
+    particleWrap.appendChild(p);
+  }
+
+  // Counter animation
+  function animateCount(el, target) {
+    let start = 0;
+    const duration = 2000;
+    const step = (timestamp) => {
+      if (!start) start = timestamp;
+      const progress = Math.min((timestamp - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.floor(ease * target).toLocaleString();
+      if (progress < 1) requestAnimationFrame(step);
+      else el.textContent = target.toLocaleString();
+    };
+    requestAnimationFrame(step);
+  }
+  const counters = document.querySelectorAll('.count-up');
+  const countObs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting && !e.target.dataset.done) {
+        e.target.dataset.done = 1;
+        animateCount(e.target, parseInt(e.target.dataset.target));
+      }
+    });
+  }, { threshold: 0.3 });
+  counters.forEach(c => countObs.observe(c));
+
+  // Reveal on scroll
+  const revealObs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+
+  // Gallery filter
+  function filterGallery(cat, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.gallery-item').forEach(item => {
+      if (cat === 'all' || item.dataset.cat === cat) {
+        item.style.display = '';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+  }
+
+  // Lightbox
+  function openLightbox(src, title, sub) {
+    document.getElementById('lightboxImg').src = src;
+    document.getElementById('lightboxTitle').textContent = title;
+    document.getElementById('lightboxSub').textContent = sub;
+    document.getElementById('lightbox').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+  // Video overlay
+  function playVideo() {
+    document.getElementById('filmOverlay').classList.add('hidden');
+  }
+
+  // Form submit
+  function handleSubmit(e) {
+    e.preventDefault();
+    const msg = document.getElementById('formMsg');
+    msg.style.display = 'block';
+    e.target.querySelector('.form-submit').disabled = true;
+    e.target.querySelector('.form-submit').textContent = 'Sent ✓';
+  }
+</script>
+</body>
+</html>
